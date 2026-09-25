@@ -24,9 +24,9 @@ exit 0
 EOF
 chmod +x package/base-files/files/etc/uci-defaults/99-custom-settings
 
-# 3. 注入 MT7981 平台内核 BTF 与 eBPF 配置
+# 3. 注入 MT7981 平台内核 BTF 与 eBPF 配置（注意目录全小写 filogic）
 echo "CONFIG_DEBUG_INFO=y" >> target/linux/mediatek/filogic/config-default
-echo "CONFIG_DEBUG_INFO_BTF=y" >> target/linux/mediatek/filogIC/config-default
+echo "CONFIG_DEBUG_INFO_BTF=y" >> target/linux/mediatek/filogic/config-default
 echo "CONFIG_BPF=y" >> target/linux/mediatek/filogic/config-default
 echo "CONFIG_BPF_SYSCALL=y" >> target/linux/mediatek/filogic/config-default
 echo "CONFIG_NET_CLS_ACT=y" >> target/linux/mediatek/filogic/config-default
