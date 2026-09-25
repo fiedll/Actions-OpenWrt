@@ -1,111 +1,205 @@
 name: OpenWrt Builder
 
 on:
-  repository_dispatch:
   workflow_dispatch:
+  repository_dispatch:
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
   REPO_BRANCH: master
+
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: .config
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
+
   TZ: Asia/Shanghai
 
 jobs:
   build:
     runs-on: ubuntu-22.04
+
     permissions:
       contents: write
 
     steps:
+
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Free up disk space
+    - name: Free disk space
       run: |
-        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-        sudo docker image prune --all --force
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        sudo docker image prune -af
 
-    - name: Initialization environment
+    - name: Initialize environment
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo -E apt-get -qq update
-        sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev dwarves
+        sudo apt-get update
+
+        sudo apt-get install -y \
+        ack antlr3 asciidoc autoconf automake autopoint \
+        binutils bison build-essential bzip2 ccache cmake \
+        cpio curl device-tree-compiler fastjar flex gawk \
+        gettext gcc-multilib g++-multilib git gperf \
+        haveged help2man intltool libc6-dev-i386 \
+        libelf-dev libfuse-dev libglib2.0-dev \
+        libgmp3-dev libltdl-dev libmpc-dev \
+        libmpfr-dev libncurses5-dev libncursesw5-dev \
+        libpython3-dev libreadline-dev libssl-dev \
+        libtool lrzsz mkisofs msmtp ninja-build \
+        p7zip p7zip-full patch pkgconf python3 \
+        python3-pyelftools python3-setuptools \
+        qemu-utils rsync scons squashfs-tools \
+        subversion swig texinfo uglifyjs unzip \
+        vim wget xmlto xxd zlib1g-dev dwarves
+
         sudo timedatectl set-timezone "$TZ"
+
         sudo mkdir -p /workdir
-        sudo chown $USER:$GROUPS /workdir
+        sudo chown $USER:$USER /workdir
+
+    - name: Cache dl
+      uses: actions/cache@v4
+      with:
+        path: |
+          openwrt/dl
+        key: dl-${{ runner.os }}-${{ hashFiles('.config') }}
+        restore-keys: |
+          dl-${{ runner.os }}-
+
+    - name: Cache ccache
+      uses: actions/cache@v4
+      with:
+        path: ~/.ccache
+        key: ccache-${{ runner.os }}-${{ hashFiles('.config') }}
+        restore-keys: |
+          ccache-${{ runner.os }}-
 
     - name: Clone source code
       working-directory: /workdir
       run: |
-        git clone $REPO_URL -b $REPO_BRANCH openwrt
+        git clone $REPO_URL \
+        --single-branch \
+        --depth 1 \
+        -b $REPO_BRANCH \
+        openwrt
+
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
     - name: Load custom feeds
       run: |
-        [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
+        [ -f $FEEDS_CONF ] && \
+        mv $FEEDS_CONF openwrt/feeds.conf.default
+
         chmod +x $DIY_P1_SH
+
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH
 
     - name: Update feeds
-      run: cd openwrt && ./scripts/feeds update -a
+      run: |
+        cd openwrt
+        ./scripts/feeds update -a
 
     - name: Install feeds
-      run: cd openwrt && ./scripts/feeds install -a
+      run: |
+        cd openwrt
+        ./scripts/feeds install -a
 
     - name: Load custom configuration
       run: |
-        [ -e files ] && mv files openwrt/files
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
+        [ -d files ] && mv files openwrt/files
+        [ -f $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
+
         chmod +x $DIY_P2_SH
+
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
-    - name: Download package
+    - name: Generate configuration
       run: |
         cd openwrt
+
         make defconfig
-        make download -j8
+
+        grep \
+        "CONFIG_TARGET_mediatek_filogic_DEVICE_qihoo_360t7=y" \
+        .config
+
+    - name: Check Daed package
+      run: |
+        cd openwrt
+
+        find . -iname "*daed*" || true
+
+    - name: Download packages
+      run: |
+        cd openwrt
+
+        make download -j$(nproc)
+
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
-    - name: Compile the firmware
+    - name: Compile firmware
       run: |
         cd openwrt
-        echo -e "$(nproc) thread compile"
+
+        export CCACHE_DIR=$HOME/.ccache
+        export CCACHE_MAXSIZE=2G
+
+        echo "CPU Threads: $(nproc)"
+
         make -j$(nproc) || make -j1 V=s
-        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
-        [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+
+        grep '^CONFIG_TARGET.*DEVICE.*=y' .config \
+        | sed -r 's/.*DEVICE_(.*)=y/\1/' \
+        > DEVICE_NAME
+
+        [ -s DEVICE_NAME ] && \
+        echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
-    - name: Check firmware directory
+    - name: Check firmware
       run: |
         cd openwrt
-        ls -lh bin/targets/mediatek/filogic/
+
+        ls -lh \
+        bin/targets/mediatek/filogic/
 
     - name: Organize files
       run: |
         cd openwrt/bin/targets/mediatek/filogic
+
         rm -rf packages
+
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
 
-    - name: Upload firmware to artifact
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: ${{ env.FIRMWARE }}/*
+        path: ${{ env.FIRMWARE }}
 
-    - name: Generate release tag
+    - name: Generate release info
       id: tag
       run: |
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
-        touch release.txt
 
-    - name: Upload firmware to release
+        cat > release.txt << EOF
+        Device: 360T7
+        Platform: MT7981 Filogic
+        Source: ImmortalWrt Master
+        Build Time: $(date)
+        EOF
+
+    - name: Upload release
       uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
