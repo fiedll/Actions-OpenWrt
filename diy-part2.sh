@@ -11,7 +11,7 @@ sed -i 's/192.168.1.1/192.168.6.1/g' package/base-files/files/bin/config_generat
 # 2. 强制指定 mediatek/filogic 平台内核版本为 6.12
 sed -i 's/KERNEL_PATCHVER:=.*/KERNEL_PATCHVER:=6.12/g' target/linux/mediatek/Makefile
 
-# 3. 注入 MT7981 (filogic) 内核 BTF 与 eBPF 配置（解决 no BTF found 核心）
+# 3. 注入 MT7981 (filogic) 内核 BTF 与 eBPF 配置（解决 daed 的 no BTF found）
 echo "CONFIG_DEBUG_INFO=y" >> target/linux/mediatek/filogic/config-default
 echo "CONFIG_DEBUG_INFO_BTF=y" >> target/linux/mediatek/filogic/config-default
 echo "CONFIG_BPF=y" >> target/linux/mediatek/filogic/config-default
@@ -19,5 +19,13 @@ echo "CONFIG_BPF_SYSCALL=y" >> target/linux/mediatek/filogic/config-default
 echo "CONFIG_NET_CLS_ACT=y" >> target/linux/mediatek/filogic/config-default
 echo "CONFIG_NET_SCH_INGRESS=y" >> target/linux/mediatek/filogic/config-default
 
-# 4. 添加 daed 源码仓库
+# 4. 添加第三方软件包源
+# daed
 git clone https://github.com/sbwml/luci-app-daed package/daed
+
+# MosDNS
+git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
+
+# PassWall 源码及其核心依赖
+git clone https://github.com/xiaorouji/openwrt-passwall-packages package/passwall-packages
+git clone https://github.com/xiaorouji/openwrt-passwall package/passwall
