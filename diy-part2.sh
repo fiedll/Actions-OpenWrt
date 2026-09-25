@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # 修改默认IP
-sed -i 's/192.168.1.1/192.168.6.1/g' \
-package/base-files/files/bin/config_generate
+sed -i 's/192.168.1.1/192.168.6.1/g' package/base-files/files/bin/config_generate
 
 # 首次启动脚本
 mkdir -p package/base-files/files/etc/uci-defaults
@@ -26,9 +25,8 @@ fi
     /etc/init.d/dropbear restart
 }
 
-# 启动Web
+# 启动Web并关闭强制HTTPS跳转
 [ -f /etc/init.d/uhttpd ] && {
-    uci set uhttpd.main.listen_http='0.0.0.0:80'
     uci set uhttpd.main.redirect_https='0'
     uci commit uhttpd
 
@@ -47,23 +45,19 @@ rm -f /etc/uci-defaults/99-custom-settings
 exit 0
 EOF
 
-chmod +x \
-package/base-files/files/etc/uci-defaults/99-custom-settings
+chmod +x package/base-files/files/etc/uci-defaults/99-custom-settings
 
-# eBPF支持
-grep -q "^CONFIG_BPF=y" \
-target/linux/mediatek/filogic/config-default || cat >> \
-target/linux/mediatek/filogic/config-default <<'EOF'
-
+# 完整 eBPF 与 BTF 内核支持（daed 必需）
+grep -q "^CONFIG_BPF=y" target/linux/mediatek/filogic/config-default || cat >> target/linux/mediatek/filogic/config-default <<'EOF'
+CONFIG_DEBUG_INFO=y
+CONFIG_DEBUG_INFO_BTF=y
+CONFIG_DEBUG_INFO_DWARF4=y
 CONFIG_BPF=y
 CONFIG_BPF_SYSCALL=y
 CONFIG_NET_CLS_ACT=y
 CONFIG_NET_SCH_INGRESS=y
-
 EOF
 
-# Daed
+# 拉取 daed 源码仓库
 rm -rf package/daed
-git clone --depth=1 \
-https://github.com/QiuSimons/luci-app-daed \
-package/daed
+git clone --depth=1 https://github.com/QiuSimons/luci-app-daed package/daed
