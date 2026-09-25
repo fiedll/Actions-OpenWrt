@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # https://github.com/P3TERX/Actions-OpenWrt
 # File name: diy-part2.sh
@@ -9,8 +10,8 @@
 # See /LICENSE for more information.
 #
 
-# 1. 修改后台默认登录 IP 为 192.168.1.1（如需改成 192.168.6.1，可解开下面注释）
-# sed -i 's/192.168.1.1/192.168.6.1/g' package/base-files/files/bin/config_generate
+# 1. 修改后台默认登录 IP 为 192.168.6.1
+sed -i 's/192.168.1.1/192.168.6.1/g' package/base-files/files/bin/config_generate
 
 # 2. 注入 360T7 (MT7981 / filogic) 内核 BTF 与 eBPF 配置
 echo "CONFIG_DEBUG_INFO=y" >> target/linux/mediatek/filogic/config-default
