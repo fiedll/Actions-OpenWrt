@@ -10,9 +10,5 @@
 # See /LICENSE for more information.
 #
 
-# Uncomment a feed source
-#sed -i 's/^#\(.*helloworld\)/\1/' feeds.conf.default
-
-# Add a feed source
-# echo 'src-git helloworld https://github.com/fw876/helloworld' >>feeds.conf.default
-#echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
+# 拉取 daed 源码仓库至 package 目录
+git clone --depth=1 https://github.com/QiuSimons/luci-app-daed package/daed
