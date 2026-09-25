@@ -11,4 +11,7 @@
 #
 
 # 拉取 daed 源码仓库至 package 目录
-git clone --depth=1 https://github.com/QiuSimons/luci-app-daed package/daed
+#!/bin/bash
+
+# 拉取最新的 daede 源码仓库至 package 目录
+git clone --depth=1 https://github.com/QiuSimons/luci-app-daede package/daede
