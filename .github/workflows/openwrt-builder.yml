@@ -7,23 +7,19 @@ on:
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
   REPO_BRANCH: master
-
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: .config
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
-
   TZ: Asia/Shanghai
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-
     permissions:
       contents: write
 
     steps:
-
     - name: Checkout
       uses: actions/checkout@v4
 
@@ -40,7 +36,6 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo apt-get update
-
         sudo apt-get install -y \
         ack antlr3 asciidoc autoconf automake autopoint \
         binutils bison build-essential bzip2 ccache cmake \
@@ -57,17 +52,14 @@ jobs:
         qemu-utils rsync scons squashfs-tools \
         subversion swig texinfo uglifyjs unzip \
         vim wget xmlto xxd zlib1g-dev dwarves
-
         sudo timedatectl set-timezone "$TZ"
-
         sudo mkdir -p /workdir
         sudo chown $USER:$USER /workdir
 
     - name: Cache dl
       uses: actions/cache@v4
       with:
-        path: |
-          openwrt/dl
+        path: openwrt/dl
         key: dl-${{ runner.os }}-${{ hashFiles('.config') }}
         restore-keys: |
           dl-${{ runner.os }}-
@@ -83,21 +75,17 @@ jobs:
     - name: Clone source code
       working-directory: /workdir
       run: |
-        git clone $REPO_URL \
-        --single-branch \
+        git clone \
         --depth 1 \
+        --single-branch \
         -b $REPO_BRANCH \
-        openwrt
-
+        $REPO_URL openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
     - name: Load custom feeds
       run: |
-        [ -f $FEEDS_CONF ] && \
-        mv $FEEDS_CONF openwrt/feeds.conf.default
-
+        [ -f $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P1_SH
-
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH
 
@@ -115,70 +103,50 @@ jobs:
       run: |
         [ -d files ] && mv files openwrt/files
         [ -f $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
-
         chmod +x $DIY_P2_SH
-
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
     - name: Generate configuration
       run: |
         cd openwrt
-
         make defconfig
-
-        grep \
-        "CONFIG_TARGET_mediatek_filogic_DEVICE_qihoo_360t7=y" \
-        .config
+        grep "CONFIG_TARGET_mediatek_filogic_DEVICE_qihoo_360t7=y" .config
 
     - name: Check Daed package
       run: |
         cd openwrt
-
         find . -iname "*daed*" || true
 
     - name: Download packages
       run: |
         cd openwrt
-
         make download -j$(nproc)
-
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
     - name: Compile firmware
       run: |
         cd openwrt
-
         export CCACHE_DIR=$HOME/.ccache
         export CCACHE_MAXSIZE=2G
-
         echo "CPU Threads: $(nproc)"
-
         make -j$(nproc) || make -j1 V=s
-
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config \
         | sed -r 's/.*DEVICE_(.*)=y/\1/' \
         > DEVICE_NAME
-
-        [ -s DEVICE_NAME ] && \
-        echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
-
+        [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
     - name: Check firmware
       run: |
         cd openwrt
-
-        ls -lh \
-        bin/targets/mediatek/filogic/
+        ls -lh bin/targets/mediatek/filogic/
 
     - name: Organize files
       run: |
         cd openwrt/bin/targets/mediatek/filogic
-
         rm -rf packages
-
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
 
     - name: Upload artifact
@@ -191,13 +159,10 @@ jobs:
       id: tag
       run: |
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
-
-        cat > release.txt << EOF
-        Device: 360T7
-        Platform: MT7981 Filogic
-        Source: ImmortalWrt Master
-        Build Time: $(date)
-        EOF
+        echo "Device: 360T7" > release.txt
+        echo "Platform: MT7981 Filogic" >> release.txt
+        echo "Source: ImmortalWrt Master" >> release.txt
+        echo "Build Date: $(date +"%Y-%m-%d %H:%M:%S")" >> release.txt
 
     - name: Upload release
       uses: softprops/action-gh-release@v2
