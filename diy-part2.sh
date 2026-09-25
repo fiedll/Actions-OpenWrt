@@ -47,7 +47,7 @@ EOF
 
 chmod +x package/base-files/files/etc/uci-defaults/99-custom-settings
 
-# 完整 eBPF 与 BTF 内核支持（daed 必需）
+# 完整 eBPF 与 BTF 内核支持（daede 必需）
 grep -q "^CONFIG_BPF=y" target/linux/mediatek/filogic/config-default || cat >> target/linux/mediatek/filogic/config-default <<'EOF'
 CONFIG_DEBUG_INFO=y
 CONFIG_DEBUG_INFO_BTF=y
@@ -57,7 +57,3 @@ CONFIG_BPF_SYSCALL=y
 CONFIG_NET_CLS_ACT=y
 CONFIG_NET_SCH_INGRESS=y
 EOF
-
-# 拉取 daed 源码仓库
-rm -rf package/daed
-git clone --depth=1 https://github.com/QiuSimons/luci-app-daed package/daed
