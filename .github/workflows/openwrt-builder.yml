@@ -97,7 +97,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: openwrt/bin/targets/mediatek/filogic/*
+        path: ${{ env.FIRMWARE }}/*
 
     - name: Generate release tag
       id: tag
@@ -112,4 +112,4 @@ jobs:
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
         body_path: release.txt
-        files: openwrt/bin/targets/mediatek/filogic/*
+        files: ${{ env.FIRMWARE }}/*
