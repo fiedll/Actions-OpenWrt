@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 修改默认IP为 192.168.6.1
+# 修改后台默认IP为 192.168.6.1
 sed -i 's/192.168.1.1/192.168.6.1/g' package/base-files/files/bin/config_generate
 
 # 首次启动脚本
@@ -56,6 +56,19 @@ CONFIG_NET_CLS_ACT=y
 CONFIG_NET_SCH_INGRESS=y
 EOF
 
-# 拉取 daed 源码
+# 1. 彻底移除引起冲突的官方 feed 中的 mosdns 和 v2dat
+rm -rf feeds/packages/net/mosdns feeds/packages/net/v2dat package/feeds/packages/mosdns package/feeds/packages/v2dat
+
+# 2. 拉取稳定兼容的专属 mosdns 源码（包含最新核心与 luci-app-mosdns）
+rm -rf package/mosdns
+git clone --depth=1 https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
+
+# 3. 拉取 Daed 仓库
 rm -rf package/daed
 git clone --depth=1 https://github.com/QiuSimons/luci-app-daed package/daed
+
+# 4. 拉取 PassWall 源码及其核心依赖库（清理内部可能重复的 mosdns）
+rm -rf package/passwall package/passwall-packages
+git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall package/passwall
+git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall-packages package/passwall-packages
+rm -rf package/passwall-packages/mosdns package/passwall-packages/v2dat
