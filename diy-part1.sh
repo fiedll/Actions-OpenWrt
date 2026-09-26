@@ -1,17 +1,4 @@
 #!/bin/bash
-#
-# https://github.com/P3TERX/Actions-OpenWrt
-# File name: diy-part1.sh
 # Description: OpenWrt DIY script part 1 (Before Update feeds)
-#
-# Copyright (c) 2019-2024 P3TERX <https://p3terx.com>
-#
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
-#
 
-# 拉取 daed 源码仓库至 package 目录
-#!/bin/bash
-
-# 拉取最新的 daede 源码仓库至 package 目录
-git clone --depth=1 https://github.com/QiuSimons/luci-app-daed package/daed
+# 这里保持干净，不要写 git clone
