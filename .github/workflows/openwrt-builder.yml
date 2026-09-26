@@ -3,6 +3,9 @@ name: OpenWrt Builder
 on:
   workflow_dispatch:
   repository_dispatch:
+  push:
+    branches:
+      - main
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
@@ -140,13 +143,36 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          CLANG_PATH="$(command -v clang || true)"
+          LLVM_STRIP_PATH="$(command -v llvm-strip || true)"
+
+          if [ -z "$CLANG_PATH" ] || [ ! -x "$CLANG_PATH" ]; then
+            echo "ERROR: clang executable not found."
+            find /usr -type f -name clang -executable 2>/dev/null | head -50 || true
+            exit 1
+          fi
+
+          if [ -z "$LLVM_STRIP_PATH" ] || [ ! -x "$LLVM_STRIP_PATH" ]; then
+            echo "ERROR: llvm-strip executable not found."
+            find /usr -type f -name llvm-strip -executable 2>/dev/null | head -50 || true
+            exit 1
+          fi
+
+          CLANG_PATH="$(readlink -f "$CLANG_PATH")"
+          LLVM_STRIP_PATH="$(readlink -f "$LLVM_STRIP_PATH")"
+
+          echo "CLANG_PATH=$CLANG_PATH" >> "$GITHUB_ENV"
+          echo "LLVM_STRIP_PATH=$LLVM_STRIP_PATH" >> "$GITHUB_ENV"
+
           echo "========== TOOLCHAIN =========="
-          git --version
-          gcc --version | head -n 1
-          clang --version | head -n 1
+          echo "CLANG_PATH=$CLANG_PATH"
+          echo "LLVM_STRIP_PATH=$LLVM_STRIP_PATH"
+          "$CLANG_PATH" --version | head -n 1
           llvm-config --version || true
+          "$LLVM_STRIP_PATH" --version | head -n 1
           pahole --version || true
           go version || true
+          git --version
           echo "==============================="
 
       # ============================================================
@@ -274,7 +300,67 @@ jobs:
 
           cd openwrt
 
-          "$GITHUB_WORKSPACE/$DIY_P2_SH"
+          cp "$GITHUB_WORKSPACE/$DIY_P2_SH" /tmp/diy-part2-fixed.sh
+
+          python3 - <<'PY'
+from pathlib import Path
+
+p = Path("/tmp/diy-part2-fixed.sh")
+s = p.read_text()
+
+old = """rm -rf package/mosdns
+
+git clone \
+    --depth 1 \
+    --single-branch \
+    --branch v5 \
+    https://github.com/sbwml/luci-app-mosdns \
+    package/mosdns"""
+
+new = """rm -rf package/mosdns package/luci-app-mosdns /tmp/luci-app-mosdns
+
+git clone \
+    --depth 1 \
+    --single-branch \
+    --branch v5 \
+    https://github.com/sbwml/luci-app-mosdns \
+    /tmp/luci-app-mosdns
+
+mkdir -p package/mosdns package/luci-app-mosdns
+cp -a /tmp/luci-app-mosdns/mosdns/. package/mosdns/
+cp -a /tmp/luci-app-mosdns/luci-app-mosdns/. package/luci-app-mosdns/
+rm -rf /tmp/luci-app-mosdns"""
+
+if old not in s:
+    raise SystemExit("ERROR: expected MosDNS clone block not found")
+
+s = s.replace(old, new, 1)
+
+old_check = """if [ ! -f package/mosdns/Makefile ]; then
+    echo "ERROR: package/mosdns/Makefile not found."
+    exit 1
+fi"""
+
+new_check = """if [ ! -f package/mosdns/Makefile ]; then
+    echo "ERROR: package/mosdns/Makefile not found."
+    exit 1
+fi
+
+if [ ! -f package/luci-app-mosdns/Makefile ]; then
+    echo "ERROR: package/luci-app-mosdns/Makefile not found."
+    exit 1
+fi"""
+
+if old_check not in s:
+    raise SystemExit("ERROR: expected MosDNS validation block not found")
+
+s = s.replace(old_check, new_check, 1)
+p.write_text(s)
+PY
+
+          "$CLANG_PATH" --version | head -n 1
+          "$GITHUB_WORKSPACE/$DIY_P2_SH"  # placeholder
+          bash /tmp/diy-part2-fixed.sh
 
       # ============================================================
       # Generate configuration
@@ -406,7 +492,13 @@ jobs:
 
           ccache --zero-stats || true
 
-          make -j"$(nproc)"
+          test -x "$CLANG_PATH"
+          test -x "$LLVM_STRIP_PATH"
+
+          make \
+            -j"$(nproc)" \
+            CLANG="$CLANG_PATH" \
+            LLVM_STRIP="$LLVM_STRIP_PATH"
 
           echo "========== CCACHE STATS =========="
           ccache --show-stats || true
