@@ -33,7 +33,7 @@ cat > package/base-files/files/etc/uci-defaults/99-custom-settings <<'EOF'
 # Default root password
 # ============================================================
 
-echo "root:password" | chpasswd
+true
 
 # ============================================================
 # Enable SSH password authentication
@@ -146,7 +146,6 @@ rm -rf \
 
 # v2ray geodata
 rm -rf \
-    feeds/packages/net/v2ray-geodata \
     package/feeds/packages/v2ray-geodata
 
 # mosdns
