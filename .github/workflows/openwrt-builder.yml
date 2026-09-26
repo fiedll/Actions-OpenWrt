@@ -23,13 +23,14 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Free disk space
+    - name: Free disk space & Setup Swap
       run: |
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /usr/local/lib/android
-        sudo rm -rf /opt/ghc
-        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
         sudo docker image prune -af
+        sudo fallocate -l 6G /swapfile
+        sudo chmod 600 /swapfile
+        sudo mkswap /swapfile
+        sudo swapon /swapfile
 
     - name: Initialize environment
       env:
@@ -53,8 +54,10 @@ jobs:
         subversion swig texinfo uglifyjs unzip \
         vim wget xmlto xxd zlib1g-dev dwarves
         sudo timedatectl set-timezone "$TZ"
-        sudo mkdir -p /workdir
-        sudo chown $USER:$USER /workdir
+
+    - name: Clone source code
+      run: |
+        git clone --depth 1 -b $REPO_BRANCH $REPO_URL openwrt
 
     - name: Cache dl
       uses: actions/cache@v4
@@ -71,16 +74,6 @@ jobs:
         key: ccache-${{ runner.os }}-${{ hashFiles('.config') }}
         restore-keys: |
           ccache-${{ runner.os }}-
-
-    - name: Clone source code
-      working-directory: /workdir
-      run: |
-        git clone \
-        --depth 1 \
-        --single-branch \
-        -b $REPO_BRANCH \
-        $REPO_URL openwrt
-        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
     - name: Load custom feeds
       run: |
@@ -116,7 +109,7 @@ jobs:
     - name: Check Daed package
       run: |
         cd openwrt
-        find . -iname "*daed*" || true
+        find package/ -iname "*daed*" || true
 
     - name: Download packages
       run: |
