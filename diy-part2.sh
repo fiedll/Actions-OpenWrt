@@ -56,8 +56,11 @@ CONFIG_NET_CLS_ACT=y
 CONFIG_NET_SCH_INGRESS=y
 EOF
 
-# 1. 彻底移除引起冲突的官方 feed 中的 mosdns 和 v2dat
-rm -rf feeds/packages/net/mosdns feeds/packages/net/v2dat package/feeds/packages/mosdns package/feeds/packages/v2dat
+# 1. 彻底清除官方 feed 中冲突的老旧核心 (sing-box, xray, v2ray, mosdns)
+rm -rf feeds/packages/net/sing-box package/feeds/packages/sing-box
+rm -rf feeds/packages/net/xray-core package/feeds/packages/xray-core
+rm -rf feeds/packages/net/v2ray-geodata feeds/packages/net/mosdns feeds/packages/net/v2dat
+rm -rf package/feeds/packages/v2ray-geodata package/feeds/packages/mosdns package/feeds/packages/v2dat
 
 # 2. 拉取稳定兼容的专属 mosdns 源码（包含最新核心与 luci-app-mosdns）
 rm -rf package/mosdns
@@ -67,7 +70,7 @@ git clone --depth=1 https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdn
 rm -rf package/daed
 git clone --depth=1 https://github.com/QiuSimons/luci-app-daed package/daed
 
-# 4. 拉取 PassWall 源码及其核心依赖库（清理内部可能重复的 mosdns）
+# 4. 拉取 PassWall 源码及其核心依赖库（由 passwall-packages 提供适配好的 sing-box/xray）
 rm -rf package/passwall package/passwall-packages
 git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall package/passwall
 git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall-packages package/passwall-packages
