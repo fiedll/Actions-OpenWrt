@@ -358,8 +358,6 @@ s = s.replace(old_check, new_check, 1)
 p.write_text(s)
 PY
 
-          "$CLANG_PATH" --version | head -n 1
-          "$GITHUB_WORKSPACE/$DIY_P2_SH"  # placeholder
           bash /tmp/diy-part2-fixed.sh
 
       # ============================================================
