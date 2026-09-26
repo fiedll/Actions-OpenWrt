@@ -94,7 +94,7 @@ chmod +x \
 
 echo "[3/8] Configure eBPF / BTF"
 
-FILOGIC_CONFIG="target/linux/mediatek/filogic/config-default"
+FILOGIC_CONFIG="target/linux/mediatek/filogic/config-6.18"
 
 if [ ! -f "$FILOGIC_CONFIG" ]; then
     echo "ERROR: $FILOGIC_CONFIG does not exist."
