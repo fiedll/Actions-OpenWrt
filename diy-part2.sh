@@ -135,35 +135,17 @@ EOF
 echo "[4/8] Remove conflicting packages"
 
 # sing-box
+# Remove only the official feed copies that conflict with the pinned
+# PassWall package set. Do NOT remove xray-core/v2ray-geodata from
+# the PassWall package feed: luci-app-passwall and MosDNS depend on them.
 rm -rf \
     feeds/packages/net/sing-box \
-    package/feeds/packages/sing-box
-
-# xray
-rm -rf \
-    feeds/packages/net/xray-core \
-    package/feeds/packages/xray-core
-
-# v2ray geodata
-rm -rf \
-    package/feeds/packages/v2ray-geodata
-
-# mosdns
-rm -rf \
-    feeds/packages/net/mosdns \
-    package/feeds/packages/mosdns
-
-# v2dat
-rm -rf \
-    feeds/packages/net/v2dat \
-    package/feeds/packages/v2dat
-
-# Remove possible feed package links.
-rm -rf \
     package/feeds/packages/sing-box \
-    package/feeds/packages/xray-core \
+    feeds/packages/net/mosdns \
     package/feeds/packages/mosdns \
+    feeds/packages/net/v2dat \
     package/feeds/packages/v2dat \
+    package/feeds/packages/v2ray-geodata \
     package/feeds/packages/v2ray-geodata
 
 
@@ -182,9 +164,12 @@ git clone \
     https://github.com/sbwml/luci-app-mosdns \
     /tmp/luci-app-mosdns
 
-mkdir -p package/mosdns package/luci-app-mosdns
+mkdir -p package/mosdns package/luci-app-mosdns package/geo2txt
 cp -a /tmp/luci-app-mosdns/mosdns/. package/mosdns/
 cp -a /tmp/luci-app-mosdns/luci-app-mosdns/. package/luci-app-mosdns/
+if [ -d /tmp/luci-app-mosdns/geo2txt ]; then
+    cp -a /tmp/luci-app-mosdns/geo2txt/. package/geo2txt/
+fi
 rm -rf /tmp/luci-app-mosdns
 
 if [ ! -d package/mosdns ]; then
@@ -199,6 +184,11 @@ fi
 
 if [ ! -f package/luci-app-mosdns/Makefile ]; then
     echo "ERROR: package/luci-app-mosdns/Makefile not found."
+    exit 1
+fi
+
+if [ ! -f package/geo2txt/Makefile ]; then
+    echo "ERROR: package/geo2txt/Makefile not found."
     exit 1
 fi
 
@@ -259,15 +249,13 @@ fi
 # which conflict with the dedicated MosDNS package.
 rm -rf \
     package/passwall-packages/mosdns \
-    package/passwall-packages/v2dat \
-    package/passwall-packages/v2ray-geodata
+    package/passwall-packages/v2dat
 
 # Make sure an old sing-box/xray package from another source
 # cannot remain in the build tree.
 rm -rf \
     package/passwall/sing-box \
-    package/passwall/xray-core \
-    package/passwall-packages/xray-core
+    package/passwall/xray-core
 
 # Keep PassWall's own sing-box package if it exists.
 # It is intentionally NOT removed here.
