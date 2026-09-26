@@ -174,22 +174,32 @@ rm -rf \
 
 echo "[5/8] Install MosDNS v5"
 
-rm -rf package/mosdns
+rm -rf package/mosdns package/luci-app-mosdns /tmp/luci-app-mosdns
 
 git clone \
     --depth 1 \
     --single-branch \
     --branch v5 \
     https://github.com/sbwml/luci-app-mosdns \
-    package/mosdns
+    /tmp/luci-app-mosdns
+
+mkdir -p package/mosdns package/luci-app-mosdns
+cp -a /tmp/luci-app-mosdns/mosdns/. package/mosdns/
+cp -a /tmp/luci-app-mosdns/luci-app-mosdns/. package/luci-app-mosdns/
+rm -rf /tmp/luci-app-mosdns
 
 if [ ! -d package/mosdns ]; then
-    echo "ERROR: Failed to clone luci-app-mosdns."
+    echo "ERROR: Failed to prepare MosDNS package."
     exit 1
 fi
 
 if [ ! -f package/mosdns/Makefile ]; then
     echo "ERROR: package/mosdns/Makefile not found."
+    exit 1
+fi
+
+if [ ! -f package/luci-app-mosdns/Makefile ]; then
+    echo "ERROR: package/luci-app-mosdns/Makefile not found."
     exit 1
 fi
 
