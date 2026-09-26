@@ -144,7 +144,17 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           CLANG_PATH="$(command -v clang || true)"
-          LLVM_STRIP_PATH="$(find /usr/bin /usr/lib/llvm-* -type f -name llvm-strip -executable 2>/dev/null | sort -V | tail -n 1)"
+          LLVM_STRIP_PATH=""
+          for candidate in llvm-strip llvm-strip-14 llvm-strip-15 llvm-strip-16 llvm-strip-17 llvm-strip-18; do
+            if command -v "$candidate" >/dev/null 2>&1; then
+              LLVM_STRIP_PATH="$(command -v "$candidate")"
+              break
+            fi
+          done
+
+          if [ -z "$LLVM_STRIP_PATH" ]; then
+            LLVM_STRIP_PATH="$(find -L /usr/lib/llvm-* -type f -name llvm-strip -executable 2>/dev/null | sort -V | tail -n 1)"
+          fi
 
           if [ -z "$CLANG_PATH" ] || [ ! -x "$CLANG_PATH" ]; then
             echo "ERROR: clang executable not found."
