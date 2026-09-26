@@ -7,6 +7,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: openwrt-360t7-build-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
   REPO_BRANCH: master
@@ -144,16 +148,10 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           CLANG_PATH="$(command -v clang || true)"
-          LLVM_STRIP_PATH=""
-          for candidate in llvm-strip llvm-strip-14 llvm-strip-15 llvm-strip-16 llvm-strip-17 llvm-strip-18; do
-            if command -v "$candidate" >/dev/null 2>&1; then
-              LLVM_STRIP_PATH="$(command -v "$candidate")"
-              break
-            fi
-          done
+          LLVM_STRIP_PATH="$(find /usr/lib/llvm-*/bin -maxdepth 1 -type f -name llvm-strip -executable 2>/dev/null | sort -V | tail -n 1)"
 
           if [ -z "$LLVM_STRIP_PATH" ]; then
-            LLVM_STRIP_PATH="$(find -L /usr/lib/llvm-* -type f -name llvm-strip -executable 2>/dev/null | sort -V | tail -n 1)"
+            LLVM_STRIP_PATH="$(find /usr/bin -maxdepth 1 -type f -name llvm-strip -executable 2>/dev/null | head -n 1)"
           fi
 
           if [ -z "$CLANG_PATH" ] || [ ! -x "$CLANG_PATH" ]; then
@@ -430,8 +428,6 @@ jobs:
           export CCACHE_DIR="$HOME/.ccache"
           export CCACHE_MAXSIZE=2G
 
-          export MAKEFLAGS="-j$(nproc)"
-
           echo "========================================"
           echo "CPU Threads: $(nproc)"
           echo "Memory:"
@@ -445,10 +441,16 @@ jobs:
           test -x "$CLANG_PATH"
           test -x "$LLVM_STRIP_PATH"
 
-          make \
+          if ! make \
             -j"$(nproc)" \
             CLANG="$CLANG_PATH" \
             LLVM_STRIP="$LLVM_STRIP_PATH"
+          then
+            echo "========== PARALLEL BUILD FAILED =========="
+            echo "Re-running package/install with -j1 V=s for diagnostics."
+            make -j1 V=s package/install || true
+            exit 1
+          fi
 
           echo "========== CCACHE STATS =========="
           ccache --show-stats || true
