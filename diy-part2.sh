@@ -56,6 +56,6 @@ CONFIG_NET_CLS_ACT=y
 CONFIG_NET_SCH_INGRESS=y
 EOF
 
-# 拉取 daed 源码到 package/custom 目录下（安全路径）
+# 拉取 daed 源码
 rm -rf package/daed
 git clone --depth=1 https://github.com/QiuSimons/luci-app-daed package/daed
