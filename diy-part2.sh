@@ -219,6 +219,7 @@ grep '^CONFIG_TARGET_' .config 2>/dev/null || true
 
 echo "============================================================"
 echo "Daed BTF verification:"
+DAED_MAKEFILE="package/daed/Makefile"
 if [ -f "$DAED_MAKEFILE" ] && grep -Eq '\\+DAED_USE_VMLINUX_BTF:vmlinux-btf|\\+PACKAGE_daed_DAED_USE_VMLINUX_BTF:vmlinux-btf' "$DAED_MAKEFILE"; then
     echo "ERROR: Daed still has the unavailable vmlinux-btf package dependency."
     exit 1
