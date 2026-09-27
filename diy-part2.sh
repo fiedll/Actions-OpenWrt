@@ -7,13 +7,14 @@ echo "Starting diy-part2.sh"
 echo "============================================================"
 
 # ============================================================
-# 0. Upgrade Golang toolchain to 23.x (Fix mosdns / tailscale)
+# 0. Keep the OpenWrt/ImmortalWrt native Go toolchain
 # ============================================================
+# Do NOT replace feeds/packages/lang/golang with an older pinned branch.
+# Current PassWall geoview requires a newer Go toolchain; the 25.12 source
+# already provides a compatible Go package. Replacing it with sbwml 23.x
+# causes geoview to fail during compilation.
 
-echo "[0/8] Upgrading Golang toolchain to 23.x"
-rm -rf feeds/packages/lang/golang
-git clone --depth 1 https://github.com/sbwml/packages_lang_golang -b 23.x feeds/packages/lang/golang
-
+echo "[0/8] Using native OpenWrt 25.12 Go toolchain"
 
 # ============================================================
 # 1. Basic system settings
