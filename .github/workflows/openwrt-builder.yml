@@ -249,7 +249,7 @@ jobs:
             echo "ERROR: feed Daed package still exists."
             exit 1
           fi
-          if [ ! -f package/daed/daed/Makefile ]; then
+          if [ ! -f package/daed/Makefile ]; then
             echo "ERROR: custom package/daed is missing."
             exit 1
           fi
