@@ -7,10 +7,6 @@ on:
     branches:
       - main
 
-concurrency:
-  group: openwrt-360t7-build-${{ github.ref }}
-  cancel-in-progress: true
-
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
   REPO_BRANCH: openwrt-25.12
@@ -314,6 +310,14 @@ jobs:
           echo "FIRMWARE=$PWD" >> "$GITHUB_ENV"
 
       # ============================================================
+      # Generate release tag
+      # ============================================================
+      - name: Generate release tag
+        run: |
+          set -eux
+          echo "RELEASE_TAG=360T7-$(date +"%Y.%m.%d-%H%M")" >> "$GITHUB_ENV"
+
+      # ============================================================
       # Upload artifact
       # ============================================================
       - name: Upload artifact
@@ -332,7 +336,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: 360T7-$(date +"%Y.%m.%d-%H%M")
+          tag_name: ${{ env.RELEASE_TAG }}
           name: ImmortalWrt 360T7 Firmware Release
           files: ${{ env.FIRMWARE }}/*
           fail_on_unmatched_files: false
