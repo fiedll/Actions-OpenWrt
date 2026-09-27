@@ -355,8 +355,18 @@ jobs:
 
           echo "========== IMPORTANT PACKAGES =========="
           grep -E \
-            '^CONFIG_PACKAGE_(luci-app-passwall|luci-app-passwall2|sing-box|daed|luci-app-daed|mosdns|luci-app-mosdns)' \
+            '^CONFIG_PACKAGE_(luci-app-passwall|luci-app-passwall2|sing-box|daed|luci-app-daed|mosdns|luci-app-mosdns|luci-app-tailscale-community|luci-i18n-tailscale-community-zh-cn)' \
             .config || true
+          grep -q '^CONFIG_PACKAGE_tailscale=y' .config
+          grep -q '^CONFIG_PACKAGE_luci-app-tailscale-community=y' .config
+          grep -q '^CONFIG_PACKAGE_luci-i18n-tailscale-community-zh-cn=y' .config
+
+          if grep -q '^CONFIG_PACKAGE_luci-app-tailscale=y' .config; then
+            echo "ERROR: legacy luci-app-tailscale is selected; use luci-app-tailscale-community."
+            exit 1
+          fi
+
+          echo "OK: Tailscale Community LuCI + Chinese translation selected."
           echo "========================================"
 
       # ============================================================
