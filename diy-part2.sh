@@ -130,6 +130,8 @@ rm -rf \
     package/feeds/packages/v2dat \
     feeds/packages/net/daed \
     package/feeds/packages/daed \
+    feeds/packages/net/geoview \
+    package/feeds/packages/geoview \
     package/feeds/packages/v2ray-geodata \
     feeds/packages/net/dae \
     package/feeds/base/dae \
