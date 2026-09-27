@@ -62,6 +62,16 @@ if uci show uhttpd.main >/dev/null 2>&1; then
     uci commit uhttpd
 fi
 
+# ============================================================
+# Remove broken snapshot video repository
+# ============================================================
+# ImmortalWrt snapshot video/packages.adb can occasionally be served
+# truncated, which makes apk update fail with wget error 8. This build
+# does not ship video packages, so remove only that optional feed.
+if [ -f /etc/apk/repositories.d/distfeeds.list ]; then
+    sed -i '\#/video/packages\.adb#d' /etc/apk/repositories.d/distfeeds.list
+fi
+
 if [ -f /etc/init.d/uhttpd ]; then
     /etc/init.d/uhttpd enable
 fi
@@ -201,14 +211,38 @@ echo "[6/8] Install Daed"
 
 rm -rf package/daed
 
+DAED_TAG="daed_2026.07.31-r1"
 git clone \
     --depth 1 \
     --single-branch \
+    --branch "$DAED_TAG" \
     https://github.com/QiuSimons/luci-app-daed \
     package/daed
 
 if [ ! -d package/daed ]; then
     echo "ERROR: Failed to clone luci-app-daed."
+    exit 1
+fi
+
+DAED_MAKEFILE="package/daed/daed/Makefile"
+if [ ! -f "$DAED_MAKEFILE" ]; then
+    echo "ERROR: Daed Makefile not found."
+    exit 1
+fi
+
+if grep -q '+DAED_USE_VMLINUX_BTF:vmlinux-btf' "$DAED_MAKEFILE"; then
+    sed -i \
+        's/+DAED_USE_VMLINUX_BTF:vmlinux-btf/+PACKAGE_daed_DAED_USE_VMLINUX_BTF:vmlinux-btf/' \
+        "$DAED_MAKEFILE"
+fi
+
+if grep -q '+DAED_USE_VMLINUX_BTF:vmlinux-btf' "$DAED_MAKEFILE"; then
+    echo "ERROR: invalid bare Daed BTF dependency condition remains."
+    exit 1
+fi
+
+if ! grep -q '+PACKAGE_daed_DAED_USE_VMLINUX_BTF:vmlinux-btf' "$DAED_MAKEFILE"; then
+    echo "ERROR: expected conditional vmlinux-btf dependency is missing."
     exit 1
 fi
 
@@ -328,6 +362,18 @@ grep -E \
     '^(CONFIG_DEBUG_INFO|CONFIG_DEBUG_INFO_BTF|CONFIG_DEBUG_INFO_DWARF4|CONFIG_BPF|CONFIG_BPF_SYSCALL|CONFIG_NET_CLS_ACT|CONFIG_NET_SCH_INGRESS)' \
     "$FILOGIC_CONFIG" \
     || true
+
+echo
+echo "Daed BTF selection:"
+grep -E '^CONFIG_PACKAGE_daed_DAED_USE_(KERNEL|VMLINUX)_BTF=' .config || true
+if ! grep -q '^CONFIG_PACKAGE_daed_DAED_USE_KERNEL_BTF=y' .config; then
+    echo "ERROR: Daed kernel BTF mode is not selected."
+    exit 1
+fi
+if grep -q '^CONFIG_PACKAGE_daed_DAED_USE_VMLINUX_BTF=y' .config; then
+    echo "ERROR: Daed vmlinux-btf mode is selected unexpectedly."
+    exit 1
+fi
 
 echo
 echo "============================================================"
