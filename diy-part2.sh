@@ -182,6 +182,17 @@ if [ -d /tmp/luci-app-mosdns/geo2txt ]; then
 fi
 rm -rf /tmp/luci-app-mosdns
 
+# MosDNS v5 requires the separate v2ray-geodata package.
+# ImmortalWrt's feed copy is removed above, so provide the
+# maintained sbwml package explicitly.
+rm -rf package/v2ray-geodata
+git clone     --depth 1     --single-branch     https://github.com/sbwml/v2ray-geodata     package/v2ray-geodata
+
+if [ ! -f package/v2ray-geodata/Makefile ]; then
+    echo "ERROR: v2ray-geodata Makefile not found."
+    exit 1
+fi
+
 if [ ! -d package/mosdns ]; then
     echo "ERROR: Failed to prepare MosDNS package."
     exit 1
@@ -375,6 +386,12 @@ if grep -q '^CONFIG_PACKAGE_daed_DAED_USE_VMLINUX_BTF=y' .config; then
     exit 1
 fi
 
+echo
+echo
+echo "Package dependency validation:"
+echo "  v2ray-geodata: $(test -f package/v2ray-geodata/Makefile && echo OK || echo MISSING)"
+echo "  xray-core:     $(test -f package/passwall-packages/xray-core/Makefile && echo OK || echo MISSING)"
+echo "  geo2txt:       $(test -f package/geo2txt/Makefile && echo OK || echo MISSING)"
 echo
 echo "============================================================"
 echo "diy-part2.sh completed successfully."
