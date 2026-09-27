@@ -128,7 +128,10 @@ rm -rf \
     package/feeds/packages/mosdns \
     feeds/packages/net/v2dat \
     package/feeds/packages/v2dat \
+    feeds/packages/net/daed \
+    package/feeds/packages/daed \
     package/feeds/packages/v2ray-geodata \
+    feeds/packages/net/dae \
     package/feeds/base/dae \
     package/feeds/packages/dae
 
