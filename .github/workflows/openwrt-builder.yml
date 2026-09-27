@@ -238,6 +238,21 @@ jobs:
 
           echo "========== BTF / TOOLCHAIN CHECK =========="
           grep -E '^(CONFIG_BPF_TOOLCHAIN_HOST|CONFIG_KERNEL_DEBUG_INFO_BTF)' .config || true
+          grep -q '^CONFIG_KERNEL_DEBUG_INFO_BTF=y' .config
+          if grep -q '^CONFIG_KERNEL_DEBUG_INFO_REDUCED=y' .config; then
+            echo "ERROR: CONFIG_KERNEL_DEBUG_INFO_REDUCED disables kernel BTF."
+            exit 1
+          fi
+
+          echo "========== DAED PACKAGE TREE CHECK =========="
+          if [ -e package/feeds/packages/daed ]; then
+            echo "ERROR: feed Daed package still exists."
+            exit 1
+          fi
+          if [ ! -f package/daed/daed/Makefile ]; then
+            echo "ERROR: custom package/daed is missing."
+            exit 1
+          fi
 
       # ============================================================
       # Download package sources
