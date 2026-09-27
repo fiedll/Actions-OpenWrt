@@ -167,23 +167,28 @@ git clone --depth 1 --single-branch https://github.com/sbwml/v2ray-geodata packa
 
 
 # ============================================================
-# 6. Daed
-# ============================================================
+# 6. Daed / dae / LuCI (known-good 360T7 source)
 
-echo "[6/8] Install Daed"
+echo "[6/8] Install Daed / dae / luci-app-daede"
 
-rm -rf package/daed
-git clone --depth 1 https://github.com/QiuSimons/luci-app-daed package/daed
+rm -rf package/daed package/luci-app-daede package/dae /tmp/openwrt-daede
 
-DAED_MAKEFILE="package/daed/daed/Makefile"
-if [ -f "$DAED_MAKEFILE" ]; then
-    # 完全剔除过时的独立 vmlinux-btf 依赖，使用内核集成 BTF
-    sed -i 's/+DAED_USE_VMLINUX_BTF:vmlinux-btf//g' "$DAED_MAKEFILE"
-    sed -i 's/+PACKAGE_daed_DAED_USE_VMLINUX_BTF:vmlinux-btf//g' "$DAED_MAKEFILE"
-fi
+git clone --depth 1 --single-branch https://github.com/kenzok8/openwrt-daede.git /tmp/openwrt-daede
+
+for pkg in daed luci-app-daede dae; do
+    test -d "/tmp/openwrt-daede/$pkg" || { echo "ERROR: missing $pkg in kenzok8/openwrt-daede"; exit 1; }
+done
+cp -a /tmp/openwrt-daede/daed package/daed
+cp -a /tmp/openwrt-daede/luci-app-daede package/luci-app-daede
+cp -a /tmp/openwrt-daede/dae package/dae
+rm -rf package/daed/vmlinux-btf /tmp/openwrt-daede
+
+test -f package/daed/Makefile
+test -f package/luci-app-daede/Makefile
+test -f package/dae/Makefile
+echo "OK: known-good kenzok8 Daed tree installed."
 
 
-# ============================================================
 # 7. PassWall + PassWall Packages
 # ============================================================
 
