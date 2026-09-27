@@ -104,12 +104,15 @@ chmod +x \
 
 echo "[3/8] Configure eBPF / BTF"
 
-FILOGIC_CONFIG="target/linux/mediatek/filogic/config-6.18"
+FILOGIC_CONFIG="$(find target/linux/mediatek/filogic -maxdepth 1 -type f -name 'config-*' | sort -V | tail -n 1)"
 
-if [ ! -f "$FILOGIC_CONFIG" ]; then
-    echo "ERROR: $FILOGIC_CONFIG does not exist."
+if [ -z "$FILOGIC_CONFIG" ] || [ ! -f "$FILOGIC_CONFIG" ]; then
+    echo "ERROR: no Mediatek Filogic kernel config file was found."
+    find target/linux/mediatek/filogic -maxdepth 1 -type f -name 'config-*' -print 2>/dev/null || true
     exit 1
 fi
+
+echo "Using Filogic kernel config: $FILOGIC_CONFIG"
 
 # Remove possible duplicate entries first.
 sed -i \
@@ -377,14 +380,15 @@ grep -E \
 echo
 echo "Daed BTF selection:"
 grep -E '^CONFIG_PACKAGE_daed_DAED_USE_(KERNEL|VMLINUX)_BTF=' .config || true
-if ! grep -q '^CONFIG_PACKAGE_daed_DAED_USE_KERNEL_BTF=y' .config; then
-    echo "ERROR: Daed kernel BTF mode is not selected."
-    exit 1
-fi
 if grep -q '^CONFIG_PACKAGE_daed_DAED_USE_VMLINUX_BTF=y' .config; then
-    echo "ERROR: Daed vmlinux-btf mode is selected unexpectedly."
+    echo "ERROR: obsolete Daed vmlinux-btf mode is selected."
     exit 1
 fi
+if grep -q 'vmlinux-btf' "$DAED_MAKEFILE"; then
+    echo "ERROR: Daed still references vmlinux-btf."
+    exit 1
+fi
+echo "OK: Daed uses integrated kernel BTF."
 
 echo
 echo
