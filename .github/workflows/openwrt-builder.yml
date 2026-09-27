@@ -360,6 +360,15 @@ jobs:
           grep -q '^CONFIG_PACKAGE_tailscale=y' .config
           grep -q '^CONFIG_PACKAGE_luci-app-tailscale-community=y' .config
           grep -q '^CONFIG_PACKAGE_luci-i18n-tailscale-community-zh-cn=y' .config
+          grep -q '^CONFIG_KERNEL_DEBUG_INFO_BTF=y' .config
+          grep -q '^CONFIG_KERNEL_XDP_SOCKETS=y' .config
+          grep -q '^CONFIG_PACKAGE_daed=y' .config
+          grep -q '^CONFIG_PACKAGE_luci-app-daed=y' .config
+
+          if grep -q '^CONFIG_PACKAGE_luci-i18n-tailscale-zh-cn=y' .config; then
+            echo "ERROR: legacy Tailscale translation package is selected."
+            exit 1
+          fi
 
           if grep -q '^CONFIG_PACKAGE_luci-app-tailscale=y' .config; then
             echo "ERROR: legacy luci-app-tailscale is selected; use luci-app-tailscale-community."
@@ -525,6 +534,15 @@ jobs:
           cd openwrt
 
           test -d bin/targets/mediatek/filogic
+
+          echo "========== Built package checks =========="
+          find bin/packages -type f \
+            \( -name '*daed*.apk' -o -name 'luci-app-tailscale-community*.apk' -o -name 'luci-i18n-tailscale-community-zh-cn*.apk' \) \
+            -print 2>/dev/null | sort
+
+          test -n "$(find bin/packages -type f -name 'daed*.apk' -print -quit 2>/dev/null)"
+          test -n "$(find bin/packages -type f -name 'luci-app-tailscale-community*.apk' -print -quit 2>/dev/null)"
+          test -n "$(find bin/packages -type f -name 'luci-i18n-tailscale-community-zh-cn*.apk' -print -quit 2>/dev/null)"
 
           echo "========== Firmware =========="
           ls -lah bin/targets/mediatek/filogic/
