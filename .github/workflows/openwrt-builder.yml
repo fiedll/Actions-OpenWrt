@@ -13,7 +13,7 @@ concurrency:
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
-  REPO_BRANCH: master
+  REPO_BRANCH: openwrt-25.12
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: .config
   DIY_P1_SH: diy-part1.sh
@@ -368,6 +368,19 @@ jobs:
 
           echo "OK: Tailscale Community LuCI + Chinese translation selected."
           echo "========================================"
+
+          echo "========== Tailscale / Package Manager =========="
+          grep -E '^CONFIG_PACKAGE_(luci-app-tailscale-community|luci-i18n-tailscale-community-zh-cn|luci-app-package-manager|luci-i18n-package-manager-zh-cn)=y' .config
+          if grep -q '^CONFIG_PACKAGE_luci-app-tailscale=y' .config; then
+            echo "ERROR: legacy luci-app-tailscale is selected; use luci-app-tailscale-community."
+            exit 1
+          fi
+          if grep -q '^CONFIG_PACKAGE_luci-i18n-tailscale-zh-cn=y' .config; then
+            echo "ERROR: legacy Tailscale translation package is selected."
+            exit 1
+          fi
+          echo "OK: Tailscale Community LuCI + Chinese translation + package manager selected."
+          echo "=============================================="
 
       # ============================================================
       # Check custom packages
