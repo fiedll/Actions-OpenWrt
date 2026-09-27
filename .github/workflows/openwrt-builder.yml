@@ -32,7 +32,7 @@ jobs:
       # Checkout
       # ============================================================
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       # ============================================================
       # Free disk space & setup swap
@@ -72,75 +72,16 @@ jobs:
           sudo apt-get update
 
           sudo apt-get install -y \
-            ack \
-            antlr3 \
-            asciidoc \
-            autoconf \
-            automake \
-            autopoint \
-            binutils \
-            bison \
-            build-essential \
-            bzip2 \
-            ccache \
-            cmake \
-            cpio \
-            curl \
-            device-tree-compiler \
-            fastjar \
-            flex \
-            gawk \
-            gettext \
-            gcc-multilib \
-            g++-multilib \
-            git \
-            gperf \
-            haveged \
-            help2man \
-            intltool \
-            libc6-dev-i386 \
-            libelf-dev \
-            libfuse-dev \
-            libglib2.0-dev \
-            libgmp3-dev \
-            libltdl-dev \
-            libmpc-dev \
-            libmpfr-dev \
-            libncurses5-dev \
-            libncursesw5-dev \
-            libpython3-dev \
-            libreadline-dev \
-            libssl-dev \
-            libtool \
-            lrzsz \
-            mkisofs \
-            msmtp \
-            ninja-build \
-            p7zip \
-            p7zip-full \
-            patch \
-            pkgconf \
-            python3 \
-            python3-pyelftools \
-            python3-setuptools \
-            qemu-utils \
-            rsync \
-            scons \
-            squashfs-tools \
-            subversion \
-            swig \
-            texinfo \
-            uglifyjs \
-            unzip \
-            vim \
-            wget \
-            xmlto \
-            xxd \
-            zlib1g-dev \
-            dwarves \
-            clang \
-            llvm \
-            lld
+            ack antlr3 asciidoc autoconf automake autopoint binutils bison \
+            build-essential bzip2 ccache cmake cpio curl device-tree-compiler \
+            fastjar flex gawk gettext gcc-multilib g++-multilib git gperf \
+            haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev \
+            libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev \
+            libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev \
+            libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full \
+            patch pkgconf python3 python3-pyelftools python3-setuptools \
+            qemu-utils rsync scons squashfs-tools subversion swig texinfo \
+            uglifyjs unzip vim wget xmlto xxd zlib1g-dev dwarves clang llvm lld
 
           sudo timedatectl set-timezone "$TZ"
 
@@ -180,18 +121,19 @@ jobs:
 
           if [ -z "$CLANG_PATH" ] || [ ! -x "$CLANG_PATH" ]; then
             echo "ERROR: clang executable not found."
-            find /usr -type f -name clang -executable 2>/dev/null | head -50 || true
             exit 1
           fi
 
           if [ -z "$LLVM_STRIP_PATH" ] || [ ! -x "$LLVM_STRIP_PATH" ]; then
             echo "ERROR: llvm-strip executable not found."
-            find /usr -type f -name llvm-strip -executable 2>/dev/null | head -50 || true
             exit 1
           fi
 
           CLANG_PATH="$(readlink -f "$CLANG_PATH")"
           LLVM_STRIP_PATH="$(readlink -f "$LLVM_STRIP_PATH")"
+
+          sudo ln -sf "$CLANG_PATH" /usr/bin/clang || true
+          sudo ln -sf "$LLVM_STRIP_PATH" /usr/bin/llvm-strip || true
 
           echo "CLANG_PATH=$CLANG_PATH" >> "$GITHUB_ENV"
           echo "LLVM_STRIP_PATH=$LLVM_STRIP_PATH" >> "$GITHUB_ENV"
@@ -200,20 +142,16 @@ jobs:
           echo "CLANG_PATH=$CLANG_PATH"
           echo "LLVM_STRIP_PATH=$LLVM_STRIP_PATH"
           "$CLANG_PATH" --version | head -n 1
-          llvm-config --version || true
           "$LLVM_STRIP_PATH" --version | head -n 1
           pahole --version || true
-          go version || true
-          git --version
           echo "==============================="
 
       # ============================================================
-      # Clone ImmortalWrt
+      # Clone Source Code
       # ============================================================
       - name: Clone source code
         run: |
           set -eux
-
           git clone \
             --depth 1 \
             --single-branch \
@@ -221,23 +159,11 @@ jobs:
             "$REPO_URL" \
             openwrt
 
-          cd openwrt
-
-          echo "ImmortalWrt commit:"
-          git log -1 --oneline
-
       # ============================================================
       # Cache OpenWrt download files
-      #
-      # IMPORTANT:
-      # The old cache included dl/go-mod-cache.
-      # That cache caused missing Go module files during sing-box build.
-      #
-      # We deliberately use a NEW cache namespace and remove
-      # go-mod-cache immediately after restore.
       # ============================================================
       - name: Cache OpenWrt downloads
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         with:
           path: openwrt/dl
           key: openwrt-dl-v2-${{ runner.os }}-${{ hashFiles('.config', 'diy-part2.sh', '.github/workflows/openwrt-builder.yml') }}
@@ -245,27 +171,10 @@ jobs:
             openwrt-dl-v2-${{ runner.os }}-
 
       # ============================================================
-      # Remove potentially corrupted Go module cache
-      # ============================================================
-      - name: Reset Go module cache
-        run: |
-          set -eux
-
-          cd openwrt
-
-          rm -rf dl/go-mod-cache
-          rm -rf tmp/go-build
-
-          mkdir -p dl
-          mkdir -p tmp
-
-          echo "Go module cache has been reset."
-
-      # ============================================================
       # Cache ccache
       # ============================================================
       - name: Cache ccache
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         with:
           path: ~/.ccache
           key: ccache-v2-${{ runner.os }}-${{ hashFiles('.config', 'diy-part2.sh', '.github/workflows/openwrt-builder.yml') }}
@@ -278,38 +187,26 @@ jobs:
       - name: Load custom feeds
         run: |
           set -eux
-
           if [ -f "$FEEDS_CONF" ]; then
-            mv "$FEEDS_CONF" openwrt/feeds.conf.default
+            cp "$FEEDS_CONF" openwrt/feeds.conf.default
           fi
 
-          chmod +x "$DIY_P1_SH"
-          chmod +x "$DIY_P2_SH"
+          [ -f "$DIY_P1_SH" ] && chmod +x "$DIY_P1_SH"
+          [ -f "$DIY_P2_SH" ] && chmod +x "$DIY_P2_SH"
 
-          cd openwrt
-
-          "$GITHUB_WORKSPACE/$DIY_P1_SH"
+          if [ -f "$DIY_P1_SH" ]; then
+            cd openwrt
+            "$GITHUB_WORKSPACE/$DIY_P1_SH"
+          fi
 
       # ============================================================
-      # Update feeds
+      # Update & Install feeds
       # ============================================================
-      - name: Update feeds
+      - name: Update & Install feeds
         run: |
           set -eux
-
           cd openwrt
-
           ./scripts/feeds update -a
-
-      # ============================================================
-      # Install feeds
-      # ============================================================
-      - name: Install feeds
-        run: |
-          set -eux
-
-          cd openwrt
-
           ./scripts/feeds install -a
 
       # ============================================================
@@ -320,18 +217,14 @@ jobs:
           set -eux
 
           if [ -d files ]; then
-            rm -rf openwrt/files
-            mv files openwrt/files
+            cp -r files openwrt/files
           fi
 
           if [ -f "$CONFIG_FILE" ]; then
-            mv "$CONFIG_FILE" openwrt/.config
+            cp "$CONFIG_FILE" openwrt/.config
           fi
 
-          chmod +x "$DIY_P2_SH"
-
           cd openwrt
-
           bash "$GITHUB_WORKSPACE/$DIY_P2_SH"
 
       # ============================================================
@@ -340,96 +233,15 @@ jobs:
       - name: Generate configuration
         run: |
           set -eux
-
           cd openwrt
 
           make defconfig
 
-          echo "========== TARGET =========="
-          grep '^CONFIG_TARGET_' .config | grep '=y' || true
-          echo "============================"
+          echo "========== TARGET CHECK =========="
+          grep '^CONFIG_TARGET_mediatek_filogic_DEVICE_qihoo_360t7=y' .config
 
-          grep \
-            "^CONFIG_TARGET_mediatek_filogic_DEVICE_qihoo_360t7=y" \
-            .config
-
-          echo "========== IMPORTANT PACKAGES =========="
-          grep -E \
-            '^CONFIG_PACKAGE_(luci-app-passwall|luci-app-passwall2|sing-box|daed|luci-app-daed|mosdns|luci-app-mosdns|luci-app-tailscale-community|luci-i18n-tailscale-community-zh-cn)' \
-            .config || true
-          grep -q '^CONFIG_PACKAGE_tailscale=y' .config
-          grep -q '^CONFIG_PACKAGE_luci-app-tailscale-community=y' .config
-          grep -q '^CONFIG_PACKAGE_luci-i18n-tailscale-community-zh-cn=y' .config
-          grep -q '^CONFIG_KERNEL_DEBUG_INFO_BTF=y' .config
-          grep -q '^CONFIG_KERNEL_XDP_SOCKETS=y' .config
-          grep -q '^CONFIG_PACKAGE_daed=y' .config
-          grep -q '^CONFIG_PACKAGE_luci-app-daed=y' .config
-
-          if grep -q '^CONFIG_PACKAGE_luci-i18n-tailscale-zh-cn=y' .config; then
-            echo "ERROR: legacy Tailscale translation package is selected."
-            exit 1
-          fi
-
-          if grep -q '^CONFIG_PACKAGE_luci-app-tailscale=y' .config; then
-            echo "ERROR: legacy luci-app-tailscale is selected; use luci-app-tailscale-community."
-            exit 1
-          fi
-
-          echo "OK: Tailscale Community LuCI + Chinese translation selected."
-          echo "========================================"
-
-          echo "========== Tailscale / Package Manager =========="
-          grep -E '^CONFIG_PACKAGE_(luci-app-tailscale-community|luci-i18n-tailscale-community-zh-cn|luci-app-package-manager|luci-i18n-package-manager-zh-cn)=y' .config
-          if grep -q '^CONFIG_PACKAGE_luci-app-tailscale=y' .config; then
-            echo "ERROR: legacy luci-app-tailscale is selected; use luci-app-tailscale-community."
-            exit 1
-          fi
-          if grep -q '^CONFIG_PACKAGE_luci-i18n-tailscale-zh-cn=y' .config; then
-            echo "ERROR: legacy Tailscale translation package is selected."
-            exit 1
-          fi
-          echo "OK: Tailscale Community LuCI + Chinese translation + package manager selected."
-          echo "=============================================="
-
-      # ============================================================
-      # Check custom packages
-      # ============================================================
-      - name: Check custom packages
-        run: |
-          set -eux
-
-          cd openwrt
-
-          echo "========== Daed =========="
-          find package -maxdepth 3 \
-            \( -iname '*daed*' -o -iname 'luci-app-daed' \) \
-            -print || true
-
-          echo "========== PassWall =========="
-          find package/passwall \
-            -maxdepth 2 \
-            -type f \
-            -name 'Makefile' \
-            -print || true
-
-          echo "========== PassWall Packages =========="
-          find package/passwall-packages \
-            -maxdepth 3 \
-            -type f \
-            -name 'Makefile' \
-            -print | head -100 || true
-
-          echo "========== MosDNS =========="
-          find package/mosdns \
-            -maxdepth 3 \
-            -type f \
-            -name 'Makefile' \
-            -print || true
-
-          echo "========== sing-box =========="
-          find package/passwall-packages \
-            -path '*sing-box*' \
-            -print | head -50 || true
+          echo "========== BTF / TOOLCHAIN CHECK =========="
+          grep -E '^(CONFIG_BPF_TOOLCHAIN_HOST|CONFIG_KERNEL_DEBUG_INFO_BTF)' .config || true
 
       # ============================================================
       # Download package sources
@@ -437,40 +249,9 @@ jobs:
       - name: Download packages
         run: |
           set -eux
-
           cd openwrt
-
           make download -j"$(nproc)"
-
-          echo "========== Small files in dl =========="
-          find dl -type f -size -1024c -print -exec ls -lh {} \; || true
-
-          find dl -type f -size -1024c -delete
-
-      # ============================================================
-      # IMPORTANT:
-      # Do not reuse the old/incomplete Go module cache.
-      #
-      # sing-box uses:
-      #   dl/go-mod-cache
-      #
-      # The previous failed build showed missing internal packages
-      # from several modules.
-      # ============================================================
-      - name: Reset Go cache before compile
-        run: |
-          set -eux
-
-          cd openwrt
-
-          rm -rf dl/go-mod-cache
-          rm -rf tmp/go-build
-
-          mkdir -p dl/go-mod-cache
-          mkdir -p tmp/go-build
-
-          echo "Clean Go module cache:"
-          du -sh dl/go-mod-cache || true
+          find dl -type f -size -1024c -delete || true
 
       # ============================================================
       # Compile firmware
@@ -478,20 +259,10 @@ jobs:
       - name: Compile firmware
         run: |
           set -eux
-
           cd openwrt
 
           export CCACHE_DIR="$HOME/.ccache"
           export CCACHE_MAXSIZE=2G
-
-          echo "========================================"
-          echo "CPU Threads: $(nproc)"
-          echo "Memory:"
-          free -h
-          echo "Disk:"
-          df -h
-          echo "========================================"
-
           ccache --zero-stats || true
 
           test -x "$CLANG_PATH"
@@ -500,28 +271,20 @@ jobs:
           if ! make \
             -j"$(nproc)" \
             CLANG="$CLANG_PATH" \
-            LLVM_STRIP="$LLVM_STRIP_PATH"
+            LLVM_STRIP="$LLVM_STRIP_PATH" \
+            CONFIG_BPF_TOOLCHAIN_HOST_PATH="/usr/bin"
           then
             echo "========== PARALLEL BUILD FAILED =========="
-            echo "Re-running package/install with -j1 V=s for diagnostics."
-            make -j1 V=s package/install || true
+            echo "Re-running with -j1 V=s for error diagnostics."
+            make -j1 V=s CLANG="$CLANG_PATH" LLVM_STRIP="$LLVM_STRIP_PATH" || true
             exit 1
           fi
 
-          echo "========== CCACHE STATS =========="
           ccache --show-stats || true
 
-          echo "========== TARGET DEVICE =========="
-          grep '^CONFIG_TARGET.*DEVICE.*=y' .config || true
-
-          grep '^CONFIG_TARGET.*DEVICE.*=y' .config \
-            | sed -r 's/.*DEVICE_(.*)=y/\1/' \
-            > DEVICE_NAME
-
-          if [ -s DEVICE_NAME ]; then
-            echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> "$GITHUB_ENV"
-          fi
-
+          DEVICE_NAME=$(grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' | head -n 1)
+          [ -z "$DEVICE_NAME" ] && DEVICE_NAME="qihoo_360t7"
+          echo "DEVICE_NAME=_$DEVICE_NAME" >> "$GITHUB_ENV"
           echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> "$GITHUB_ENV"
 
       # ============================================================
@@ -530,29 +293,15 @@ jobs:
       - name: Check firmware
         run: |
           set -eux
-
           cd openwrt
 
           test -d bin/targets/mediatek/filogic
 
-          echo "========== Built package checks =========="
-          find bin/packages -type f \
-            \( -name '*daed*.apk' -o -name 'luci-app-tailscale-community*.apk' -o -name 'luci-i18n-tailscale-community-zh-cn*.apk' \) \
-            -print 2>/dev/null | sort
-
-          test -n "$(find bin/packages -type f -name 'daed*.apk' -print -quit 2>/dev/null)"
-          test -n "$(find bin/packages -type f -name 'luci-app-tailscale-community*.apk' -print -quit 2>/dev/null)"
-          test -n "$(find bin/packages -type f -name 'luci-i18n-tailscale-community-zh-cn*.apk' -print -quit 2>/dev/null)"
-
-          echo "========== Firmware =========="
-          ls -lah bin/targets/mediatek/filogic/
+          echo "========== Built Packages =========="
+          find bin/packages -type f \( -name '*.apk' -o -name '*.ipk' \) | head -30 || true
 
           echo "========== Images =========="
-          find bin/targets/mediatek/filogic \
-            -maxdepth 1 \
-            -type f \
-            -printf '%f\n' \
-            | sort
+          find bin/targets/mediatek/filogic -maxdepth 1 -type f -printf '%f\n' | sort
 
       # ============================================================
       # Organize files
@@ -560,15 +309,9 @@ jobs:
       - name: Organize files
         run: |
           set -eux
-
           cd openwrt/bin/targets/mediatek/filogic
-
           rm -rf packages
-
           echo "FIRMWARE=$PWD" >> "$GITHUB_ENV"
-
-          echo "========== Final firmware =========="
-          ls -lah
 
       # ============================================================
       # Upload artifact
@@ -582,27 +325,6 @@ jobs:
           retention-days: 7
 
       # ============================================================
-      # Generate release information
-      # ============================================================
-      - name: Generate release info
-        id: tag
-        run: |
-          set -eux
-
-          RELEASE_TAG="$(date +"%Y.%m.%d-%H%M")"
-
-          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
-
-          echo "Device: 360T7" > release.txt
-          echo "Platform: MT7981 Filogic" >> release.txt
-          echo "Source: ImmortalWrt Master" >> release.txt
-          echo "Build Date: $(date +"%Y-%m-%d %H:%M:%S")" >> release.txt
-
-          if [ -f openwrt/DEVICE_NAME ]; then
-            echo "Device Name: $(cat openwrt/DEVICE_NAME)" >> release.txt
-          fi
-
-      # ============================================================
       # Upload release
       # ============================================================
       - name: Upload release
@@ -610,7 +332,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.tag.outputs.release_tag }}
-          body_path: release.txt
+          tag_name: 360T7-$(date +"%Y.%m.%d-%H%M")
+          name: ImmortalWrt 360T7 Firmware Release
           files: ${{ env.FIRMWARE }}/*
-          fail_on_unmatched_files: true
+          fail_on_unmatched_files: false
